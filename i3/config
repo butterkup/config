@@ -48,7 +48,7 @@ set_from_resource $background     i3wm.background    #0000000
 #
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
-set  $terminal       urxvtc
+set  $terminal       alacritty
 set  $mod            Mod4
 gaps inner           6
 gaps outer           1
@@ -90,7 +90,7 @@ exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock -efc191919 --nofor
 
 # NetworkManager is the most popular way to manage wireless networks on Linux,
 # and nm-applet is a desktop environment-independent system tray GUI for it.
-exec --no-startup-id nm-applet
+# exec--no-startup-id nm-applet
 
 # Use pactl to adjust volume in PulseAudio.
 set $refresh_i3status killall -SIGUSR1 i3status

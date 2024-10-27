@@ -19,18 +19,17 @@ alias boot="shutdown --reboot now"
 alias sql="sqlite3 --box"
 # alias wifi_movie="origins_router && no_watch"
 # alias wifi_load_movie="origins_router && watch_movie load"
-alias mwifi=_mwifi_setup
+alias mwifi="_mwifi_setup"
 
 alias nameep="python3 -m mpack.nameep"
-alias webrun="python3 -m mpack.webrun"
-alias toxspf="python3 -m mpack.toxspf"
-alias inpm="npm --no-fund --no-audit --no-install-links"
+# alias inpm="npm --no-fund --no-audit --no-install-links"
 alias mtools="python3 -m mpack.cmd_tools"
 
 alias ..="cd ../"
 alias '_'="cd -"
 alias ...="cd ../../"
 alias ....="cd ../../../"
+alias .....="cd ../../../../"
 alias activate=_activate_venv
 alias createvenv=_create_venv
 alias lsvenv=_list_venvs

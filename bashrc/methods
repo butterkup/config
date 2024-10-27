@@ -55,8 +55,8 @@ function _get_state_char() {
 }
 
 function _get_state_color() {
-  local OK_COLOR='\e[92;3m'
-  local ERR_COLOR='\e[91;3m'
+  local OK_COLOR='\e[37;1m'
+  local ERR_COLOR='\e[31;1m'
   # symbols="✓×"
   [[ $_LAST_COMMAND_STATE -eq 0 ]] && echo -en "$OK_COLOR" || echo -en "$ERR_COLOR"
 }
@@ -68,7 +68,7 @@ function _set_last_command_state() {
 
 _LAST_COMMAND_STATE=0
 PROMPT_COMMAND=_set_last_command_state
-readonly PS1=$'\[\e[0m\]\[$(_get_state_color)\]$(_get_state_char) \[\e[0m\]\[\e[97;1m\]$(_get_virtual_env)\[\e[96;1m\]\W\[\e[97;1m\] • \[\e[0m\]'
+PS1=$'\[\e[97;1m\]$(_get_virtual_env)\[\e[96;1m\]\W \[$(_get_state_color)\]• \[\e[0m\]'
 
 function _get_venvs_completion() {
   local curr_word="${COMP_WORDS[COMP_CWORD]}"
@@ -120,11 +120,12 @@ function _list_venvs() {
 }
 
 function _update_venvs() {
-  local venvs=($(_list_venvs))
   local current_venv="$VIRTUAL_ENV"
-  for venv in "${venvs[@]}"; do
-    _activate_venv "$venv"
-    pip freeze | cut -d'=' -f1 | xargs -n1 pip install -U
+  for venv in `_list_venvs`; do
+    _activate_venv "$venv" && {
+      pip install -U $(pip list | sed 1,2d | awk '{print $1}')
+      deactivate
+    }
   done
   if [ -n "$current_venv" ]; then
     _activate_venv "$(basename "$current_venv")"
@@ -175,7 +176,8 @@ function _drop_venv() {
 }
 
 function _encfs_vault_mounted() {
-  [ "$(df --output=source "$VAULT_MOUNT_POINT" | sed 1d)" == encfs ]
+  # [ "$(df --output=source "$VAULT_MOUNT_POINT" | sed 1d)" == encfs ]
+  mountpoint -q "$VAULT_MOUNT_POINT"
 }
 
 function _setup_encfs_vault() {
@@ -187,6 +189,7 @@ function _mount_encfs_vault() {
     echo Vault Already Mounted >/dev/stderr
     return 1
   else
+    chmod 755 "$VAULT_MOUNT_POINT"
     encfs "$ENCRYPTED_VAULT_DIR" "$VAULT_MOUNT_POINT" -o auto_unmount
   fi
 }
@@ -203,6 +206,7 @@ function _unmount_encfs_vault() {
     else
       fusermount -u "$VAULT_MOUNT_POINT"
     fi
+    chmod 555 "$VAULT_MOUNT_POINT"
   else
     echo Vault Not Mounted >/dev/stderr
     return 1
@@ -238,42 +242,19 @@ function _expand_alias() {
   { echo "${BASH_ALIASES["$1"]?}" || return $?; } 2>/dev/null
 }
 
-function _share_server_url() {
-  local URL="$1"
-  which kde-connect &>/dev/null || {
-    echo "Server running at: $URL"
-    return 1
-  }
-  # Refresh KDE-connect available devices
-  # in the current network.
-  kdeconnect-cli --refresh
-  # Wait for clients to connect
-  sleep 1
-  # Get all available devices names
-  local devices=($(kdeconnect-cli --list-available --name-only))
-  echo "SERVER URL: $URL"
-  for device in "${devices[@]}"; do
-    # Send server url to each one
-    echo "  sending to: $device"
-    kdeconnect-cli --share-text "$URL" --name "$device" &>/dev/null
-  done
-}
-
 function _total_commits() {
-  local projects=("$CONTENT_CODE" $CONTENT_WORK/*)
-  for project in "${projects[@]}"; do
-    git -C "$project" log \
+  for project in $CONTENT_ETC/repos/*; do
+    git 2>/dev/null -C "$project" log \
       --author="Simon Nganga" \
-      --author="simon nganga njoroge" \
-      --pretty="format:%h"
+      --format="%an"
     echo
   done | wc -l
 }
 
 function _mwifi_setup() {
   if ! _encfs_vault_mounted; then
-    echo Please mount Vault >&2
-    return 1;
+    echo >&2 "Vault not mounted"
+    return 1
   fi
   _set_current_ip
   echo "Activating VENV: movie-app"
@@ -285,8 +266,6 @@ function _mwifi_setup() {
   echo "  STATICS:"
   echo "    HOST=$STATICS_HOST"
   echo "    PORT=$STATICS_PORT"
-  echo "Setting up KDE-CONNECT"
-  _share_server_url "http://$MOVIE_HOST:$MOVIE_PORT"
   echo "Starting SERVER"
   movie-app
   echo Shutting DOWN: movie-app

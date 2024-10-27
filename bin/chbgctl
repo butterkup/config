@@ -1,0 +1,76 @@
+#!/usr/bin/env sh
+
+CHBGPIDFILE="${DEFAULTCHBGPIDFILE:-$HOME/.chbg.pid}"
+
+# Retrives the chbg PID from CHBGPIDFILE 
+function getchbgpid {
+  if [[ -f "$CHBGPIDFILE" ]]; then
+    local pid="$(<"$CHBGPIDFILE")"
+    if [[ "$pid" =~ ^[[:digit:]]+$ ]]; then
+      echo "$pid"
+      return 0
+    fi
+    echo >&2 "Not a valid PID: '$pid'"
+    return 2
+  fi
+  echo >&2 "PID path doesn't exist or is not a file: '$CHBGPIDFILE'"
+  return 1
+}
+
+# Help/Manual
+HELP="
+Communicate with the chbg server
+Options       Arguments    Description
+--file   -f   PIDFILE      Specify the chbg server PID file
+--nextbg -n                Ask chbg to set next background
+--reload -r                Ask chbg to reload assets; backgrounds and variables.
+--help   -h                Show this help message
+
+The --nextbg and --reload options are exclusive, the last one takes effect.
+Default PIDFILE path is:
+   - if DEFAULTCHBGPIDFILE is set from environment: '$DEFAULTCHBGPIDFILE'
+   - else: '$HOME/.chbg.pid'
+"
+
+# What do w want from the chbg server: reload, set next bg or none
+ACTION=none
+
+# Parse commandline options and set relevant global variables
+function process_arguments {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --file | -f) CHBGPIDFILE="$2"; shift;;
+      --nextbg | -n) ACTION="nextbg" ;;
+      --reload | -r) ACTION="reload" ;;
+      --help | -h) echo "$HELP"; exit 0;;
+      *) echo >&2 -e "Unknown command line argument: '$1'\nPass --help option for usage."; exit 1;;
+    esac
+    shift
+  done
+}
+
+# Send command to chbg server
+function sendsignal {
+  kill -s "${2:?Signal not specified}" "${1:?PID not specified}" || {
+    echo >&2 "Errors encounterred while sending signal '$2' to chbg server running at PID '$1'"
+    exit 4
+  }
+}
+
+# Where everything happens
+function main {
+  process_arguments "$@"
+  local pid=$(getchbgpid)
+  if [[ $? -ne 0 ]]; then
+    exit 2
+  fi
+  case "$ACTION" in
+    none) echo >&2 "Must specify either --reload or --nextbg"; exit 3 ;;
+    reload) sendsignal "$pid" "USR1" ;&
+    nextbg) sendsignal "$pid" "USR2" ;;
+  esac
+}
+
+# Program entrypoint
+main "$@"
+
