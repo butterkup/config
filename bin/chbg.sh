@@ -53,7 +53,7 @@ Note: Due to the limitations of feh, the program used to set
   *) echo >&2 "chbg does not support cmdargs, only --help, but got: $*"; exit 1 ;;
 esac
 
-if [[ "$CHBGFAST" =~ ^y|yes|true$ ]]; then
+if ! [[ "$CHBGFAST" =~ ^y|yes|true$ ]]; then
   if [ -f "$pidfile" ]; then
     echo >&2 "chbg: there is a chbg instance already running in pid $(<"$pidfile")"
     echo >&2 "      or the last one did not cleanup properly. Send SIGTERM"
